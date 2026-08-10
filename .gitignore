@@ -1,0 +1,57 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+target/
+build/
+.idea_modules/
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.swp
+*.swo
+*.lock
+
+# Maven / Gradle (если используете)
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+build/
+target/
+*.class
+
+# Node.js (если есть фронтенд)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ENV файлы (секреты)
+.env
+.env.local
+.env.*.local
+
+# Тестовые отчеты
+coverage/
+.nyc_output/
+test-results/
+
+# Системные
+*.hprof
+*.heap
+*.dump
