@@ -24,4 +24,14 @@ public class StatsEmbedded {
                 stats.getVitality(), stats.getIntelligence(),
                 stats.getPerception(), stats.getWill());
     }
+
+    public Stats toDomain(){
+        return new Stats.Builder()
+                .strength(this.strength)
+                .agility(this.agility)
+                .vitality(this.vitality)
+                .intelligence(this.intelligence)
+                .perception(this.perception)
+                .will(this.will).build();
+    }
 }

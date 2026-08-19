@@ -22,15 +22,24 @@ public class PlayerEntity {
     @Embedded
     private StatsEmbedded stats;
 
-    public PlayerEntity(String name, int level, long exp, StatsEmbedded stats) {
+    public PlayerEntity(Long id, String name, int level, long exp, StatsEmbedded stats) {
+        this.id = id;
         this.name = name;
         this.level = level;
         this.exp = exp;
         this.stats = stats;
     }
 
-    public static PlayerEntity of(Player player){
-        return new PlayerEntity(player.getName(), player.getLevel(), player.getExp(), StatsEmbedded.of(player.getStats()));
+    public static PlayerEntity of(Player player, Long id){
+        return new PlayerEntity(id, player.getName(), player.getLevel(), player.getExp(), StatsEmbedded.of(player.getStats()));
+    }
+
+    public Player toDomain(){
+        return new Player.Builder()
+                .name(this.getName())
+                .level(this.getLevel())
+                .exp(this.getExp())
+                .stats(this.getStats().toDomain()).build();
     }
 
 }

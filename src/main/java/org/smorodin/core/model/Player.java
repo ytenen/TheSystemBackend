@@ -106,6 +106,15 @@ public class Player {
         return new Builder().build();
     }
 
+    public Player withIncreasedStat(StatType statType, int amount) {
+        return new Builder()
+                .name(this.name)
+                .level(this.level)
+                .exp(this.exp)
+                .stats(this.stats.increaseStat(statType, amount))
+                .build();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

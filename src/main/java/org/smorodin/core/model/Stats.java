@@ -37,7 +37,6 @@ public class Stats {
     public int getPerception() { return perception; }
     public int getWill() { return will; }
 
-    // Билдер для создания новых Stats
     public static class Builder {
         private int strength = 8;
         private int agility = 5;
@@ -114,5 +113,47 @@ public class Stats {
                 ", perception=" + perception +
                 ", will=" + will +
                 '}';
+    }
+
+    public Stats increaseStat(StatType statName, int amount){
+        return switch (statName) {
+            case STRENGTH -> new Builder().strength(this.strength + amount)
+                    .agility(this.agility)
+                    .vitality(this.vitality)
+                    .intelligence(this.intelligence)
+                    .perception(this.perception)
+                    .will(this.will).build();
+            case AGILITY -> new Builder().strength(this.strength)
+                    .agility(this.agility + amount)
+                    .vitality(this.vitality)
+                    .intelligence(this.intelligence)
+                    .perception(this.perception)
+                    .will(this.will).build();
+            case VITALITY -> new Builder().strength(this.strength)
+                    .agility(this.agility)
+                    .vitality(this.vitality + amount)
+                    .intelligence(this.intelligence)
+                    .perception(this.perception)
+                    .will(this.will).build();
+            case INTELLIGENCE -> new Builder().strength(this.strength)
+                    .agility(this.agility)
+                    .vitality(this.vitality)
+                    .intelligence(this.intelligence + amount)
+                    .perception(this.perception)
+                    .will(this.will).build();
+            case PERCEPTION -> new Builder().strength(this.strength)
+                    .agility(this.agility)
+                    .vitality(this.vitality)
+                    .intelligence(this.intelligence)
+                    .perception(this.perception + amount)
+                    .will(this.will).build();
+            case WILL -> new Builder().strength(this.strength)
+                    .agility(this.agility)
+                    .vitality(this.vitality)
+                    .intelligence(this.intelligence)
+                    .perception(this.perception)
+                    .will(this.will + amount).build();
+            default -> throw new IllegalArgumentException("Unknown stat: " + statName);
+        };
     }
 }
