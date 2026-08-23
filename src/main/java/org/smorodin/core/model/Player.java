@@ -1,7 +1,12 @@
 package org.smorodin.core.model;
 
+
+import lombok.Getter;
+
+
 import java.util.Objects;
 
+@Getter
 public class Player {
     private final String name;
     private final int level;
