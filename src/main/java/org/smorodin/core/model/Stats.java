@@ -1,5 +1,7 @@
 package org.smorodin.core.model;
 
+import org.smorodin.config.PlayerConfig;
+
 import java.util.Objects;
 
 public class Stats {
@@ -82,7 +84,12 @@ public class Stats {
 
     // DEFAULT статистика
     public static Stats defaultStats() {
-        return new Builder().build();
+        return new Builder().strength(PlayerConfig.START_STRENGTH)
+                .agility(PlayerConfig.START_AGILITY)
+                .vitality(PlayerConfig.START_VITALITY)
+                .intelligence(PlayerConfig.START_INTELLIGENCE)
+                .perception(PlayerConfig.START_PERCEPTION)
+                .will(PlayerConfig.START_WILL).build();
     }
 
     @Override

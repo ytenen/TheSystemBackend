@@ -2,6 +2,7 @@ package org.smorodin.core.model;
 
 
 import lombok.Getter;
+import org.smorodin.config.PlayerConfig;
 
 
 import java.util.Objects;
@@ -45,7 +46,7 @@ public class Player {
 
     // Вычисляемые поля
     public long getExpToNextLevel() {
-        return level * 100L - exp;
+        return level * 1000L - exp;
     }
 
     public Rank getRank() {
@@ -76,9 +77,9 @@ public class Player {
 
     // Билдер
     public static class Builder {
-        private String name = "DefaultName";
-        private int level = 1;
-        private long exp = 0;
+        private String name = PlayerConfig.DEFAULT_NAME;
+        private int level = PlayerConfig.START_LEVEL;
+        private long exp = PlayerConfig.START_EXP;
         private Stats stats = Stats.defaultStats();
 
         public Builder name(String name) {
@@ -108,7 +109,11 @@ public class Player {
 
     // DEFAULT игрок
     public static Player defaultPlayer() {
-        return new Builder().build();
+        return new Builder().name(PlayerConfig.DEFAULT_NAME)
+                .level(PlayerConfig.START_LEVEL)
+                .exp(PlayerConfig.START_EXP)
+                .level(PlayerConfig.START_LEVEL)
+                .stats(Stats.defaultStats()).build();
     }
 
     public Player withIncreasedStat(StatType statType, int amount) {
