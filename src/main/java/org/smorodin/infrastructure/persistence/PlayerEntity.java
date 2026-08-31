@@ -12,7 +12,6 @@ import org.smorodin.core.model.Player;
 @NoArgsConstructor
 public class PlayerEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
