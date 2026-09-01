@@ -9,6 +9,7 @@ import org.smorodin.infrastructure.persistence.UserRepository;
 import org.smorodin.infrastructure.web.dto.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +21,10 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PlayerService playerService;
     private final JwtService jwtService;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository, PlayerService playerService,
-                       JwtService jwtService, BCryptPasswordEncoder passwordEncoder) {
+                       JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.playerService = playerService;
         this.jwtService = jwtService;

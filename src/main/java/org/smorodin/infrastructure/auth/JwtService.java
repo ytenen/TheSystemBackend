@@ -3,6 +3,7 @@ package org.smorodin.infrastructure.auth;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -50,5 +51,10 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final Long userIdFromToken = extractUserId(token);
+        return (userIdFromToken.equals(((CustomUserDetails) userDetails).getUserId())) && validateToken(token);
     }
 }
