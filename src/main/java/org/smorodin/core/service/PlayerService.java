@@ -3,7 +3,7 @@ package org.smorodin.core.service;
 import jakarta.transaction.Transactional;
 import org.smorodin.config.PlayerConfig;
 import org.smorodin.core.model.Player;
-import org.smorodin.core.model.StatType;
+import org.smorodin.core.model.enums.StatType;
 import org.smorodin.core.model.Stats;
 import org.smorodin.infrastructure.persistence.PlayerEntity;
 import org.smorodin.infrastructure.persistence.PlayerRepository;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 
 @Service
-public class PlayerService {
+public class PlayerService implements RewardService{
 
     @Autowired
     private PlayerRepository playerRepository;
@@ -47,6 +47,7 @@ public class PlayerService {
                 });
     }
 
+    @Override
     @Transactional
     public Player addExp(Long id, int amount){
         PlayerEntity player = playerRepository.findById(id).orElseThrow(() -> new RuntimeException("Player with id: " + id + " not found"));
@@ -55,6 +56,7 @@ public class PlayerService {
         return domainPlayer;
     }
 
+    @Override
     @Transactional
     public Player increaseStat(Long id, String statName, int amount){
         PlayerEntity player = playerRepository.findById(id).orElseThrow(() -> new RuntimeException("Player with id: " + id + " not found"));

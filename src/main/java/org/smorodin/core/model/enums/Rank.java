@@ -1,4 +1,4 @@
-package org.smorodin.core.model;
+package org.smorodin.core.model.enums;
 
 public enum Rank {
     E(1),

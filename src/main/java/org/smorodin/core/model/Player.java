@@ -3,6 +3,8 @@ package org.smorodin.core.model;
 
 import lombok.Getter;
 import org.smorodin.config.PlayerConfig;
+import org.smorodin.core.model.enums.Rank;
+import org.smorodin.core.model.enums.StatType;
 
 
 import java.util.Objects;

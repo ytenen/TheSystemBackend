@@ -1,6 +1,7 @@
 package org.smorodin.core.model;
 
 import org.smorodin.config.PlayerConfig;
+import org.smorodin.core.model.enums.StatType;
 
 import java.util.Objects;
 
