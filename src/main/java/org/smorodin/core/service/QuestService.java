@@ -84,10 +84,13 @@ public class QuestService {
 
         // Сброс если новый день
         if (needReset(pqEntity, dailyTemplate.toDomain())) {
+            Long playerQuestId = pqEntity.getId();
+
             PlayerQuest reset = pqEntity.toDomain().reset();
             pqEntity = PlayerQuestEntity.fromDomain(reset);
-            pqEntity.setId(pqEntity.getId());
-            playerQuestRepository.save(pqEntity);
+            pqEntity.setId(playerQuestId);
+
+            pqEntity = playerQuestRepository.save(pqEntity);
         }
 
         PlayerQuest domain = pqEntity.toDomain();
@@ -134,10 +137,13 @@ public class QuestService {
 
             // Сброс скрытого если новый день
             if (needReset(hiddenPq, hidden.toDomain())) {
+                Long hiddenQuestId = hiddenPq.getId();
+
                 PlayerQuest resetHidden = hiddenPq.toDomain().reset();
                 hiddenPq = PlayerQuestEntity.fromDomain(resetHidden);
-                hiddenPq.setId(hiddenPq.getId());
-                playerQuestRepository.save(hiddenPq);
+                hiddenPq.setId(hiddenQuestId);
+
+                hiddenPq = playerQuestRepository.save(hiddenPq);
             }
 
             if (!hiddenPq.isCompleted() && domain.isDoubleTargetsMet(dailyTemplate.getTargets())) {
