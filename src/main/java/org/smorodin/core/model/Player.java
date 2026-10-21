@@ -50,31 +50,43 @@ public class Player {
     public long getExpToNextLevel() {
         return level * 1000L - exp;
     }
+    public static long getExpToLevel(int level){
+        return level*1000L;
+    }
 
     public Rank getRank() {
         return Rank.fromLevel(level);
     }
 
     // Метод добавления опыта (возвращает нового Player)
-    public Player addExp(int amount) {
-        long totalExp = this.exp + amount;
+    public Player addExp(long amount) {
         long expToNext = getExpToNextLevel();
+        int levelUp = 0;
+        long newExp = 0;
+        long currExp = this.exp;
 
-        if (totalExp >= expToNext) {
-            return new Builder()
-                    .name(this.name)
-                    .level(this.level + 1)
-                    .exp(totalExp - expToNext)
-                    .stats(this.stats)
-                    .build();
-        } else {
-            return new Builder()
-                    .name(this.name)
-                    .level(this.level)
-                    .exp(totalExp)
-                    .stats(this.stats)
-                    .build();
+        if (amount<=0){
+            throw new IllegalArgumentException("Exp amount must be positive");
         }
+        while (amount>0){
+            if (amount>=expToNext){
+                levelUp++;
+                amount-= expToNext;
+                expToNext = getExpToLevel(this.level + levelUp);
+                currExp = 0;
+
+            }else{
+                newExp = amount+currExp;
+                amount = 0;
+            }
+        }
+
+        return new Builder()
+                .name(this.name)
+                .level(this.level+levelUp)
+                .exp(newExp)
+                .stats(this.stats)
+                .build();
     }
 
     // Билдер

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,30 +33,28 @@ public class PlayerController {
         }
     }
 
-    @PostMapping("/exp/{id}")
-    public ResponseEntity<PlayerResponseDto> addExp(@PathVariable Long id, @RequestBody AddExpRequestDto request){
-        try{
-            Player player = playerService.addExp(id, request.getAmount());
-            return ResponseEntity.ok(PlayerResponseDto.of(player,id));
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    @PostMapping("/exp")
+    public ResponseEntity<?> addExp(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam int amount) {
+
+        Player player = playerService.addExp(userDetails.getUserId(), amount);
+        return ResponseEntity.ok(player);
     }
 
-    @PostMapping("/stat/{id}")
-    public ResponseEntity<PlayerResponseDto> increaseStat(@PathVariable Long id,
-                                                          @RequestBody IncreaseStatRequestDto request){
-        try{
-            Player player = playerService.increaseStat(id, request.getStatName(), request.getAmount());
-            return ResponseEntity.ok(PlayerResponseDto.of(player,id));
-        }
-        catch (IllegalArgumentException e){
-            return ResponseEntity.badRequest().build();
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    @PostMapping("/stat")
+    public ResponseEntity<?> increaseStat(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam String stat,
+            @RequestParam int amount) {
+
+        Player player = playerService.increaseStat(
+                userDetails.getUserId(),
+                stat,
+                amount
+        );
+
+        return ResponseEntity.ok(player);
     }
 
     @GetMapping

@@ -1,5 +1,7 @@
 package org.smorodin.core.service;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.smorodin.core.model.PlayerQuest;
 import org.smorodin.core.model.Quest;
 import org.smorodin.core.model.enums.QuestType;
@@ -29,13 +31,17 @@ public class QuestService {
     @Autowired
     private RewardService rewardService;
 
+
     // === Получить ежедневный квест игрока (или создать при первом запросе) ===
     @Transactional
-    public PlayerQuest getDailyQuest(Long playerId) {
+    public DailyQuestResult getDailyQuest(Long playerId) {
         QuestEntity dailyTemplate = questRepository.findByType(QuestType.DAILY)
                 .stream()
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Daily quest template not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Daily quest template not found"));
+
+        Quest quest = dailyTemplate.toDomain();
 
         PlayerQuestEntity pq = playerQuestRepository
                 .findByPlayerIdAndQuestId(playerId, dailyTemplate.getId())
@@ -46,18 +52,23 @@ public class QuestService {
                     newPq.setProgress(new HashMap<>());
                     newPq.setCompleted(false);
                     newPq.setLastResetDate(LocalDate.now());
+
                     return playerQuestRepository.save(newPq);
                 });
 
-        // Проверяем, нужно ли сбросить (новый день)
-        if (needReset(pq, dailyTemplate.toDomain())) {
-            PlayerQuest domain = pq.toDomain().reset();
-            PlayerQuestEntity saved = PlayerQuestEntity.fromDomain(domain);
+        if (needReset(pq, quest)) {
+            PlayerQuest reset = pq.toDomain().reset();
+
+            PlayerQuestEntity saved = PlayerQuestEntity.fromDomain(reset);
             saved.setId(pq.getId());
-            return playerQuestRepository.save(saved).toDomain();
+
+            pq = playerQuestRepository.save(saved);
         }
 
-        return pq.toDomain();
+        return new DailyQuestResult(
+                quest,
+                pq.toDomain()
+        );
     }
 
     // === Обновить прогресс по конкретному действию ===
@@ -80,6 +91,14 @@ public class QuestService {
         }
 
         PlayerQuest domain = pqEntity.toDomain();
+
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Progress amount must be positive");
+        }
+
+        if (!dailyTemplate.getTargets().containsKey(action)) {
+            throw new IllegalArgumentException("Unknown quest action: " + action);
+        }
 
         // Обновляем прогресс
         domain = domain.increaseProgress(action, amount);
@@ -151,6 +170,13 @@ public class QuestService {
             return !pq.getLastResetDate().equals(LocalDate.now());
         }
         return false;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class DailyQuestResult {
+        private Quest quest;
+        private PlayerQuest playerQuest;
     }
 
     // === DTO-подобный результат ===
