@@ -7,6 +7,7 @@ import org.smorodin.infrastructure.auth.JwtService;
 import org.smorodin.infrastructure.persistence.UserEntity;
 import org.smorodin.infrastructure.persistence.UserRepository;
 import org.smorodin.infrastructure.web.dto.AuthResponse;
+import org.smorodin.infrastructure.web.exception.UserAlreadyExistsException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,7 +43,7 @@ public class AuthService {
             return new AuthResponse(username,user.getId(),token);
         }
         else{
-            throw new IllegalArgumentException("User with this name already exists: " + username);
+            throw new UserAlreadyExistsException(username);
         }
     }
 
