@@ -1,3 +1,4 @@
+
 package org.smorodin.core.model.enums;
 
 public enum QuestType {
@@ -5,5 +6,6 @@ public enum QuestType {
     WEEKLY,
     MAIN,
     EVENT,
-    HIDDEN
+    HIDDEN,
+    PERSONAL
 }

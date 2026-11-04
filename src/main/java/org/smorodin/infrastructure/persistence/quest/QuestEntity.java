@@ -1,3 +1,4 @@
+
 package org.smorodin.infrastructure.persistence.quest;
 
 import jakarta.persistence.*;
@@ -24,6 +25,9 @@ public class QuestEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "owner_id")
+    private Long ownerId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -64,10 +68,11 @@ public class QuestEntity {
     @Column(name = "file_reference", length = 500)
     private String fileReference;
 
-    // === Конвертация Domain → Entity ===
     public static QuestEntity fromDomain(Quest quest) {
         QuestEntity entity = new QuestEntity();
+
         entity.setId(quest.getId());
+        entity.setOwnerId(quest.getOwnerId());
         entity.setType(quest.getType());
         entity.setTitle(quest.getTitle());
         entity.setDescription(quest.getDescription());
@@ -80,25 +85,26 @@ public class QuestEntity {
         entity.setEndDate(quest.getEndDate());
         entity.setAiContext(quest.getAiContext());
         entity.setFileReference(quest.getFileReference());
+
         return entity;
     }
 
-    // === Конвертация Entity → Domain ===
     public Quest toDomain() {
         return new Quest.Builder()
-                .id(this.id)
-                .type(this.type)
-                .title(this.title)
-                .description(this.description)
-                .targets(new HashMap<>(this.targets))
-                .expReward(this.expReward)
-                .statReward(this.statReward)
-                .statRewardAmount(this.statRewardAmount)
-                .resetInterval(this.resetInterval)
-                .startDate(this.startDate)
-                .endDate(this.endDate)
-                .aiContext(this.aiContext)
-                .fileReference(this.fileReference)
+                .id(id)
+                .ownerId(ownerId)
+                .type(type)
+                .title(title)
+                .description(description)
+                .targets(new HashMap<>(targets))
+                .expReward(expReward)
+                .statReward(statReward)
+                .statRewardAmount(statRewardAmount)
+                .resetInterval(resetInterval)
+                .startDate(startDate)
+                .endDate(endDate)
+                .aiContext(aiContext)
+                .fileReference(fileReference)
                 .build();
     }
 }
