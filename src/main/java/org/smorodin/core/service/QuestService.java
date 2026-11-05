@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Optional;
@@ -31,156 +32,80 @@ public class QuestService {
     @Autowired
     private RewardService rewardService;
 
-    /*
-     * Получить Daily Quest игрока.
-     *
-     * Если PlayerQuest ещё не существует,
-     * создаём его сразу ACTIVE.
-     */
+    @Autowired
+    private Clock clock;
+
     @Transactional
-    public DailyQuestResult getDailyQuest(
-            Long playerId
-    ) {
-        QuestEntity dailyTemplate =
-                questRepository
-                        .findByType(
-                                QuestType.DAILY
-                        )
-                        .stream()
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new RuntimeException(
-                                                "Daily quest template not found"
-                                        )
-                        );
+    public DailyQuestResult getDailyQuest(Long playerId) {
+        QuestEntity dailyTemplate = questRepository
+                .findByType(QuestType.DAILY)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException(
+                        "Daily quest template not found"
+                ));
 
-        Quest quest =
-                dailyTemplate.toDomain();
+        Quest quest = dailyTemplate.toDomain();
 
-        PlayerQuestEntity pq =
-                playerQuestRepository
-                        .findByPlayerIdAndQuestId(
-                                playerId,
-                                dailyTemplate.getId()
-                        )
-                        .orElseGet(() -> {
-                            PlayerQuestEntity newPq =
-                                    new PlayerQuestEntity();
-
-                            newPq.setPlayerId(
-                                    playerId
-                            );
-
-                            newPq.setQuestId(
-                                    dailyTemplate.getId()
-                            );
-
-                            newPq.setProgress(
-                                    new HashMap<>()
-                            );
-
-                            newPq.setStatus(
-                                    QuestStatus.ACTIVE
-                            );
-
-                            newPq.setLastResetDate(
-                                    LocalDate.now()
-                            );
-
-                            return playerQuestRepository
-                                    .save(newPq);
-                        });
+        PlayerQuestEntity pq = playerQuestRepository
+                .findByPlayerIdAndQuestId(
+                        playerId, dailyTemplate.getId()
+                )
+                .orElseGet(() -> {
+                    PlayerQuestEntity newPq = new PlayerQuestEntity();
+                    newPq.setPlayerId(playerId);
+                    newPq.setQuestId(dailyTemplate.getId());
+                    newPq.setProgress(new HashMap<>());
+                    newPq.setStatus(QuestStatus.ACTIVE);
+                    newPq.setLastResetDate(LocalDate.now(clock));
+                    return playerQuestRepository.save(newPq);
+                });
 
         if (needReset(pq, quest)) {
-            PlayerQuest reset =
-                    pq.toDomain().reset();
-
+            PlayerQuest reset = pq.toDomain().reset(clock);
             PlayerQuestEntity saved =
-                    PlayerQuestEntity
-                            .fromDomain(reset);
+                    PlayerQuestEntity.fromDomain(reset);
 
             saved.setId(pq.getId());
-
-            pq =
-                    playerQuestRepository
-                            .save(saved);
+            pq = playerQuestRepository.save(saved);
         }
 
-        return new DailyQuestResult(
-                quest,
-                pq.toDomain()
-        );
+        return new DailyQuestResult(quest, pq.toDomain());
     }
 
-    /*
-     * Обновить прогресс Daily Quest.
-     */
     @Transactional
     public QuestUpdateResult updateProgress(
             Long playerId,
             String action,
             int amount
     ) {
-        QuestEntity dailyTemplate =
-                questRepository
-                        .findByType(
-                                QuestType.DAILY
-                        )
-                        .stream()
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new RuntimeException(
-                                                "Daily quest not found"
-                                        )
-                        );
+        QuestEntity dailyTemplate = questRepository
+                .findByType(QuestType.DAILY)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException(
+                        "Daily quest not found"
+                ));
 
-        PlayerQuestEntity pqEntity =
-                playerQuestRepository
-                        .findByPlayerIdAndQuestId(
-                                playerId,
-                                dailyTemplate.getId()
-                        )
-                        .orElseThrow(
-                                () ->
-                                        new RuntimeException(
-                                                "Player quest not found"
-                                        )
-                        );
-
-        /*
-         * Новый день -> reset.
-         */
-        if (
-                needReset(
-                        pqEntity,
-                        dailyTemplate.toDomain()
+        PlayerQuestEntity pqEntity = playerQuestRepository
+                .findByPlayerIdAndQuestId(
+                        playerId, dailyTemplate.getId()
                 )
-        ) {
-            Long playerQuestId =
-                    pqEntity.getId();
+                .orElseThrow(() -> new RuntimeException(
+                        "Player quest not found"
+                ));
 
-            PlayerQuest reset =
-                    pqEntity
-                            .toDomain()
-                            .reset();
+        if (needReset(pqEntity, dailyTemplate.toDomain())) {
+            Long playerQuestId = pqEntity.getId();
 
-            pqEntity =
-                    PlayerQuestEntity
-                            .fromDomain(reset);
+            PlayerQuest reset = pqEntity.toDomain().reset(clock);
 
-            pqEntity.setId(
-                    playerQuestId
-            );
-
-            pqEntity =
-                    playerQuestRepository
-                            .save(pqEntity);
+            pqEntity = PlayerQuestEntity.fromDomain(reset);
+            pqEntity.setId(playerQuestId);
+            pqEntity = playerQuestRepository.save(pqEntity);
         }
 
-        PlayerQuest domain =
-                pqEntity.toDomain();
+        PlayerQuest domain = pqEntity.toDomain();
 
         if (amount <= 0) {
             throw new IllegalArgumentException(
@@ -188,228 +113,111 @@ public class QuestService {
             );
         }
 
-        if (
-                !dailyTemplate
-                        .getTargets()
-                        .containsKey(action)
-        ) {
+        if (!dailyTemplate.getTargets().containsKey(action)) {
             throw new IllegalArgumentException(
-                    "Unknown quest action: " +
-                            action
+                    "Unknown quest action: " + action
             );
         }
 
-        /*
-         * Обновляем прогресс.
-         */
-        domain =
-                domain.increaseProgress(
-                        action,
-                        amount
-                );
+        domain = domain.increaseProgress(action, amount);
 
         boolean mainCompleted = false;
         boolean hiddenCompleted = false;
 
-        /*
-         * Проверяем Daily Quest.
-         *
-         * ACTIVE -> COMPLETED
-         */
-        if (
-                !domain.isCompleted()
-                        &&
-                        domain.isAllTargetsMet(
-                                dailyTemplate.getTargets()
-                        )
-        ) {
+        if (!domain.isCompleted()
+                && domain.isAllTargetsMet(dailyTemplate.getTargets())) {
+
             rewardService.addExp(
                     playerId,
                     dailyTemplate.getExpReward()
             );
 
-            if (
-                    dailyTemplate.getStatReward()
-                            != null
-                            &&
-                            dailyTemplate
-                                    .getStatRewardAmount()
-                                    > 0
-            ) {
+            if (dailyTemplate.getStatReward() != null
+                    && dailyTemplate.getStatRewardAmount() > 0) {
                 rewardService.increaseStat(
                         playerId,
-                        dailyTemplate
-                                .getStatReward(),
-                        dailyTemplate
-                                .getStatRewardAmount()
+                        dailyTemplate.getStatReward(),
+                        dailyTemplate.getStatRewardAmount()
                 );
             }
 
-            domain =
-                    domain.markCompleted();
-
+            domain = domain.markCompleted(clock);
             mainCompleted = true;
         }
 
-        /*
-         * Hidden Quest.
-         *
-         * Сейчас Hidden создаётся ACTIVE,
-         * но не показывается пользователю.
-         *
-         * Позже Hidden Quest можно будет
-         * перевести на отдельную модель
-         * открытия/обнаружения.
-         */
-        Optional<QuestEntity> hiddenOpt =
-                questRepository
-                        .findByType(
-                                QuestType.HIDDEN
-                        )
-                        .stream()
-                        .findFirst();
+        Optional<QuestEntity> hiddenOpt = questRepository
+                .findByType(QuestType.HIDDEN)
+                .stream()
+                .findFirst();
 
         if (hiddenOpt.isPresent()) {
-            QuestEntity hidden =
-                    hiddenOpt.get();
+            QuestEntity hidden = hiddenOpt.get();
 
-            PlayerQuestEntity hiddenPq =
-                    playerQuestRepository
-                            .findByPlayerIdAndQuestId(
-                                    playerId,
-                                    hidden.getId()
-                            )
-                            .orElseGet(() -> {
-                                PlayerQuestEntity newHidden =
-                                        new PlayerQuestEntity();
-
-                                newHidden.setPlayerId(
-                                        playerId
-                                );
-
-                                newHidden.setQuestId(
-                                        hidden.getId()
-                                );
-
-                                newHidden.setProgress(
-                                        new HashMap<>()
-                                );
-
-                                newHidden.setStatus(
-                                        QuestStatus.ACTIVE
-                                );
-
-                                newHidden.setLastResetDate(
-                                        LocalDate.now()
-                                );
-
-                                return playerQuestRepository
-                                        .save(newHidden);
-                            });
-
-            /*
-             * Reset Hidden Quest
-             * при наступлении нового дня.
-             */
-            if (
-                    needReset(
-                            hiddenPq,
-                            hidden.toDomain()
+            PlayerQuestEntity hiddenPq = playerQuestRepository
+                    .findByPlayerIdAndQuestId(
+                            playerId, hidden.getId()
                     )
-            ) {
-                Long hiddenQuestId =
-                        hiddenPq.getId();
+                    .orElseGet(() -> {
+                        PlayerQuestEntity newHidden =
+                                new PlayerQuestEntity();
+
+                        newHidden.setPlayerId(playerId);
+                        newHidden.setQuestId(hidden.getId());
+                        newHidden.setProgress(new HashMap<>());
+                        newHidden.setStatus(QuestStatus.ACTIVE);
+                        newHidden.setLastResetDate(LocalDate.now(clock));
+
+                        return playerQuestRepository.save(newHidden);
+                    });
+
+            if (needReset(hiddenPq, hidden.toDomain())) {
+                Long hiddenQuestId = hiddenPq.getId();
 
                 PlayerQuest resetHidden =
-                        hiddenPq
-                                .toDomain()
-                                .reset();
+                        hiddenPq.toDomain().reset(clock);
 
-                hiddenPq =
-                        PlayerQuestEntity
-                                .fromDomain(
-                                        resetHidden
-                                );
-
-                hiddenPq.setId(
-                        hiddenQuestId
-                );
-
-                hiddenPq =
-                        playerQuestRepository
-                                .save(hiddenPq);
+                hiddenPq = PlayerQuestEntity.fromDomain(resetHidden);
+                hiddenPq.setId(hiddenQuestId);
+                hiddenPq = playerQuestRepository.save(hiddenPq);
             }
 
-            /*
-             * Выполнение Hidden Quest
-             * при достижении 2x Daily targets.
-             */
-            if (
-                    !hiddenPq.isCompleted()
-                            &&
-                            domain.isDoubleTargetsMet(
-                                    dailyTemplate
-                                            .getTargets()
-                            )
-            ) {
+            if (!hiddenPq.isCompleted()
+                    && domain.isDoubleTargetsMet(
+                    dailyTemplate.getTargets()
+            )) {
+
                 rewardService.addExp(
                         playerId,
                         hidden.getExpReward()
                 );
 
-                if (
-                        hidden.getStatReward()
-                                != null
-                                &&
-                                hidden
-                                        .getStatRewardAmount()
-                                        > 0
-                ) {
-                    rewardService
-                            .increaseStat(
-                                    playerId,
-                                    hidden
-                                            .getStatReward(),
-                                    hidden
-                                            .getStatRewardAmount()
-                            );
+                if (hidden.getStatReward() != null
+                        && hidden.getStatRewardAmount() > 0) {
+                    rewardService.increaseStat(
+                            playerId,
+                            hidden.getStatReward(),
+                            hidden.getStatRewardAmount()
+                    );
                 }
 
                 PlayerQuest hiddenDomain =
-                        hiddenPq
-                                .toDomain()
-                                .markCompleted();
+                        hiddenPq.toDomain().markCompleted(clock);
 
                 PlayerQuestEntity savedHidden =
-                        PlayerQuestEntity
-                                .fromDomain(
-                                        hiddenDomain
-                                );
+                        PlayerQuestEntity.fromDomain(hiddenDomain);
 
-                savedHidden.setId(
-                        hiddenPq.getId()
-                );
-
-                playerQuestRepository
-                        .save(savedHidden);
+                savedHidden.setId(hiddenPq.getId());
+                playerQuestRepository.save(savedHidden);
 
                 hiddenCompleted = true;
             }
         }
 
-        /*
-         * Сохраняем Daily Quest.
-         */
         PlayerQuestEntity savedMain =
-                PlayerQuestEntity
-                        .fromDomain(domain);
+                PlayerQuestEntity.fromDomain(domain);
 
-        savedMain.setId(
-                pqEntity.getId()
-        );
-
-        playerQuestRepository
-                .save(savedMain);
+        savedMain.setId(pqEntity.getId());
+        playerQuestRepository.save(savedMain);
 
         return new QuestUpdateResult(
                 domain,
@@ -418,29 +226,19 @@ public class QuestService {
         );
     }
 
-    /*
-     * Проверяем необходимость Daily reset.
-     */
     private boolean needReset(
             PlayerQuestEntity pq,
             Quest quest
     ) {
-        if (
-                pq.isCompleted()
-                        &&
-                        pq.getLastResetDate()
-                                .equals(LocalDate.now())
-        ) {
+        LocalDate today = LocalDate.now(clock);
+
+        if (pq.isCompleted()
+                && today.equals(pq.getLastResetDate())) {
             return false;
         }
 
-        if (
-                quest.getResetInterval()
-                        == ResetInterval.DAILY
-        ) {
-            return !pq
-                    .getLastResetDate()
-                    .equals(LocalDate.now());
+        if (quest.getResetInterval() == ResetInterval.DAILY) {
+            return !today.equals(pq.getLastResetDate());
         }
 
         return false;
@@ -449,7 +247,6 @@ public class QuestService {
     @Getter
     @AllArgsConstructor
     public static class DailyQuestResult {
-
         private Quest quest;
         private PlayerQuest playerQuest;
     }
@@ -457,9 +254,7 @@ public class QuestService {
     public static class QuestUpdateResult {
 
         private final PlayerQuest playerQuest;
-
         private final boolean mainCompleted;
-
         private final boolean hiddenCompleted;
 
         public QuestUpdateResult(
@@ -467,14 +262,9 @@ public class QuestService {
                 boolean mainCompleted,
                 boolean hiddenCompleted
         ) {
-            this.playerQuest =
-                    playerQuest;
-
-            this.mainCompleted =
-                    mainCompleted;
-
-            this.hiddenCompleted =
-                    hiddenCompleted;
+            this.playerQuest = playerQuest;
+            this.mainCompleted = mainCompleted;
+            this.hiddenCompleted = hiddenCompleted;
         }
 
         public PlayerQuest getPlayerQuest() {

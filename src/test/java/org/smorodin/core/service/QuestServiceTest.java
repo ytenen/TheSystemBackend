@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.smorodin.core.model.Quest;
 import org.smorodin.core.model.enums.QuestStatus;
@@ -15,11 +16,8 @@ import org.smorodin.infrastructure.persistence.quest.PlayerQuestRepository;
 import org.smorodin.infrastructure.persistence.quest.QuestEntity;
 import org.smorodin.infrastructure.persistence.quest.QuestRepository;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.time.*;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -46,6 +44,12 @@ class QuestServiceTest {
 
     @Mock
     private RewardService rewardService;
+
+    @Spy
+    private MutableClock clock = new MutableClock(
+            Instant.parse("2026-11-05T12:00:00Z"),
+            ZoneOffset.UTC
+    );
 
     @InjectMocks
     private QuestService questService;
@@ -90,11 +94,10 @@ class QuestServiceTest {
         entity.setQuestId(questId);
         entity.setProgress(new HashMap<>());
         entity.setStatus(QuestStatus.ACTIVE);
-        entity.setLastResetDate(LocalDate.now());
+        entity.setLastResetDate(LocalDate.now(clock));
 
         return entity;
     }
-
 
     private void configureDailyOnly() {
         when(questRepository.findByType(QuestType.DAILY))
@@ -104,7 +107,6 @@ class QuestServiceTest {
                 PLAYER_ID, DAILY_ID
         )).thenReturn(Optional.of(dailyProgress));
     }
-
 
     private void configureDailyAndHidden() {
         when(questRepository.findByType(QuestType.DAILY))
@@ -229,6 +231,7 @@ class QuestServiceTest {
         assertFalse(result.isHiddenCompleted());
 
         verify(rewardService).addExp(PLAYER_ID, 100);
+
         verify(rewardService, never())
                 .addExp(PLAYER_ID, 200);
     }
@@ -325,7 +328,7 @@ class QuestServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         dailyProgress.setLastResetDate(
-                LocalDate.now().minusDays(1)
+                LocalDate.now(clock).minusDays(1)
         );
 
         dailyProgress.setStatus(QuestStatus.COMPLETED);
@@ -344,8 +347,192 @@ class QuestServiceTest {
         );
 
         assertEquals(
-                LocalDate.now(),
+                LocalDate.now(clock),
                 result.getPlayerQuest().getLastResetDate()
         );
     }
+
+
+    @Test
+    void shouldResetDailyWhenDateChanges() {
+        when(questRepository.findByType(QuestType.DAILY))
+                .thenReturn(List.of(daily));
+
+        when(playerQuestRepository.findByPlayerIdAndQuestId(
+                PLAYER_ID, DAILY_ID
+        )).thenReturn(Optional.of(dailyProgress));
+
+        when(playerQuestRepository.save(any(PlayerQuestEntity.class)))
+                .thenAnswer(invocation -> {
+                    PlayerQuestEntity saved = invocation.getArgument(0);
+                    dailyProgress = saved;
+                    return saved;
+                });
+
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setProgress(new HashMap<>(TARGETS));
+
+        QuestService.DailyQuestResult firstDay =
+                questService.getDailyQuest(PLAYER_ID);
+
+        assertEquals(
+                QuestStatus.COMPLETED,
+                firstDay.getPlayerQuest().getStatus()
+        );
+
+        clock.setInstant(
+                Instant.parse("2026-11-06T12:00:00Z")
+        );
+
+        QuestService.DailyQuestResult secondDay =
+                questService.getDailyQuest(PLAYER_ID);
+
+        assertEquals(
+                QuestStatus.ACTIVE,
+                secondDay.getPlayerQuest().getStatus()
+        );
+
+        assertTrue(
+                secondDay.getPlayerQuest().getProgress().isEmpty()
+        );
+
+        assertEquals(
+                LocalDate.of(2026, 11, 6),
+                secondDay.getPlayerQuest().getLastResetDate()
+        );
+    }
+
+    @Test
+    void shouldResetHiddenOnNextDay() {
+        configureDailyAndHidden();
+
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setProgress(new HashMap<>(TARGETS));
+
+        hiddenProgress.setStatus(QuestStatus.COMPLETED);
+
+        clock.setInstant(
+                Instant.parse("2026-11-06T12:00:00Z")
+        );
+
+        questService.updateProgress(
+                PLAYER_ID, "pushups", 1
+        );
+
+        verify(playerQuestRepository, atLeastOnce())
+                .save(argThat(entity ->
+                        entity.getQuestId().equals(HIDDEN_ID)
+                                && entity.getStatus() == QuestStatus.ACTIVE
+                                && entity.getLastResetDate().equals(
+                                LocalDate.of(2026, 11, 6)
+                        )
+                ));
+
+        verify(rewardService, never())
+                .addExp(PLAYER_ID, 200);
+    }
+
+    @Test
+    void shouldRewardDailyAndHiddenAgainAfterReset() {
+        configureDailyAndHidden();
+
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setProgress(new HashMap<>(Map.of(
+                "pushups", 40,
+                "squats", 60,
+                "plank", 120
+        )));
+
+        hiddenProgress.setStatus(QuestStatus.COMPLETED);
+
+        clock.setInstant(
+                Instant.parse("2026-11-06T12:00:00Z")
+        );
+
+        dailyProgress.setLastResetDate(
+                LocalDate.of(2026, 11, 5)
+        );
+
+        hiddenProgress.setLastResetDate(
+                LocalDate.of(2026, 11, 5)
+        );
+
+        // После смены суток выполняем Daily.
+        dailyProgress.setProgress(new HashMap<>(Map.of(
+                "pushups", 20,
+                "squats", 30,
+                "plank", 59
+        )));
+
+        dailyProgress.setLastResetDate(
+                LocalDate.of(2026, 11, 6)
+        );
+
+        dailyProgress.setStatus(QuestStatus.ACTIVE);
+
+        QuestService.QuestUpdateResult dailyResult =
+                questService.updateProgress(
+                        PLAYER_ID, "plank", 1
+                );
+
+        assertTrue(dailyResult.isMainCompleted());
+
+        verify(rewardService, times(1))
+                .addExp(PLAYER_ID, 100);
+
+        // Проверяем повторную выдачу награды Hidden.
+        // Состояние Hidden после нового дня сбрасывается.
+        hiddenProgress.setStatus(QuestStatus.ACTIVE);
+        hiddenProgress.setLastResetDate(
+                LocalDate.of(2026, 11, 6)
+        );
+
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setProgress(new HashMap<>(Map.of(
+                "pushups", 40,
+                "squats", 60,
+                "plank", 119
+        )));
+
+        QuestService.QuestUpdateResult hiddenResult =
+                questService.updateProgress(
+                        PLAYER_ID, "plank", 1
+                );
+
+        assertTrue(hiddenResult.isHiddenCompleted());
+
+        verify(rewardService, times(1))
+                .addExp(PLAYER_ID, 200);
+    }
+
+    private static class MutableClock extends Clock {
+
+        private Instant instant;
+        private final ZoneId zone;
+
+        MutableClock(Instant instant, ZoneId zone) {
+            this.instant = Objects.requireNonNull(instant);
+            this.zone = Objects.requireNonNull(zone);
+        }
+
+        void setInstant(Instant instant) {
+            this.instant = Objects.requireNonNull(instant);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new MutableClock(instant, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant;
+        }
+    }
+
 }
