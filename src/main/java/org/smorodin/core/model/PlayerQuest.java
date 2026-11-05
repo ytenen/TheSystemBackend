@@ -3,6 +3,7 @@ package org.smorodin.core.model;
 import lombok.Getter;
 import org.smorodin.core.model.enums.QuestStatus;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -182,7 +183,12 @@ public class PlayerQuest {
     /*
      * ACTIVE -> COMPLETED
      */
+
     public PlayerQuest markCompleted() {
+        return markCompleted(Clock.systemDefaultZone());
+    }
+
+    public PlayerQuest markCompleted(Clock clock) {
         if (status == QuestStatus.COMPLETED) {
             return this;
         }
@@ -195,23 +201,30 @@ public class PlayerQuest {
 
         return copyBuilder()
                 .status(QuestStatus.COMPLETED)
-                .completedAt(LocalDateTime.now())
+                .completedAt(LocalDateTime.now(clock))
                 .build();
     }
+
 
     /*
      * Сброс Daily Quest.
      *
      * После reset квест снова ACTIVE.
      */
+
     public PlayerQuest reset() {
+        return reset(Clock.systemDefaultZone());
+    }
+
+    public PlayerQuest reset(Clock clock) {
         return copyBuilder()
                 .progress(new HashMap<>())
                 .status(QuestStatus.ACTIVE)
                 .completedAt(null)
-                .lastResetDate(LocalDate.now())
+                .lastResetDate(LocalDate.now(clock))
                 .build();
     }
+
 
     /*
      * Небольшой helper, чтобы при создании новой
