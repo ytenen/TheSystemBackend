@@ -47,14 +47,29 @@ public class PlayerService implements RewardService{
                 });
     }
 
+
     @Override
     @Transactional
-    public Player addExp(Long id, int amount){
-        PlayerEntity player = playerRepository.findById(id).orElseThrow(() -> new RuntimeException("Player with id: " + id + " not found"));
-        Player domainPlayer = player.toDomain().addExp(amount);
-        playerRepository.save(PlayerEntity.of(domainPlayer, id));
+    public Player addExp(Long id, int amount) {
+
+        PlayerEntity player = playerRepository
+                .findForUpdate(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Player with id: " + id + " not found"
+                        )
+                );
+
+        Player domainPlayer = player.toDomain()
+                .addExp(amount);
+
+        playerRepository.save(
+                PlayerEntity.of(domainPlayer, id)
+        );
+
         return domainPlayer;
     }
+
 
     @Override
     @Transactional
