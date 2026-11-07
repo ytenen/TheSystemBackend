@@ -45,6 +45,7 @@ yarn.lock
 .env
 .env.local
 .env.*.local
+/backups/
 
 # Тестовые отчеты
 coverage/
