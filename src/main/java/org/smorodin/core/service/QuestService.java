@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,6 +26,12 @@ public class QuestService {
 
     @Autowired
     private QuestRepository questRepository;
+
+    @Autowired
+    private DailyQuestSettingsService dailyQuestSettingsService;
+
+    @Autowired
+    private DailyQuestLockService dailyQuestLockService;
 
     @Autowired
     private PlayerQuestRepository playerQuestRepository;
@@ -37,6 +44,7 @@ public class QuestService {
 
     @Transactional
     public DailyQuestResult getDailyQuest(Long playerId) {
+        dailyQuestLockService.lockPlayer(playerId);
         QuestEntity dailyTemplate = questRepository
                 .findByType(QuestType.DAILY)
                 .stream()
@@ -45,7 +53,10 @@ public class QuestService {
                         "Daily quest template not found"
                 ));
 
-        Quest quest = dailyTemplate.toDomain();
+        Map<String, Integer> targets =
+                dailyQuestSettingsService.applyPendingIfDue(playerId);
+
+        Quest quest = withTargets(dailyTemplate, targets);
 
         PlayerQuestEntity pq = playerQuestRepository
                 .findByPlayerIdAndQuestId(
@@ -79,6 +90,9 @@ public class QuestService {
             String action,
             int amount
     ) {
+        dailyQuestLockService.lockPlayer(playerId);
+        Map<String, Integer> targets =
+                dailyQuestSettingsService.applyPendingIfDue(playerId);
         QuestEntity dailyTemplate = questRepository
                 .findByType(QuestType.DAILY)
                 .stream()
@@ -113,7 +127,7 @@ public class QuestService {
             );
         }
 
-        if (!dailyTemplate.getTargets().containsKey(action)) {
+        if (!targets.containsKey(action)) {
             throw new IllegalArgumentException(
                     "Unknown quest action: " + action
             );
@@ -125,7 +139,7 @@ public class QuestService {
         boolean hiddenCompleted = false;
 
         if (!domain.isCompleted()
-                && domain.isAllTargetsMet(dailyTemplate.getTargets())) {
+                && domain.isAllTargetsMet(targets)) {
 
             rewardService.addExp(
                     playerId,
@@ -182,9 +196,7 @@ public class QuestService {
             }
 
             if (!hiddenPq.isCompleted()
-                    && domain.isDoubleTargetsMet(
-                    dailyTemplate.getTargets()
-            )) {
+                    && domain.isDoubleTargetsMet(targets)) {
 
                 rewardService.addExp(
                         playerId,
@@ -243,6 +255,34 @@ public class QuestService {
 
         return false;
     }
+
+
+
+    private Quest withTargets(
+            QuestEntity template,
+            Map<String, Integer> targets
+    ) {
+        Quest original = template.toDomain();
+
+        return new Quest.Builder()
+                .id(original.getId())
+                .ownerId(original.getOwnerId())
+                .type(original.getType())
+                .title(original.getTitle())
+                .description(original.getDescription())
+                .targets(targets)
+                .expReward(original.getExpReward())
+                .statReward(original.getStatReward())
+                .statRewardAmount(original.getStatRewardAmount())
+                .resetInterval(original.getResetInterval())
+                .startDate(original.getStartDate())
+                .endDate(original.getEndDate())
+                .aiContext(original.getAiContext())
+                .fileReference(original.getFileReference())
+                .build();
+    }
+
+
 
     @Getter
     @AllArgsConstructor

@@ -19,6 +19,27 @@ jobs:
     permissions:
       contents: read
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: thesystem_test
+          POSTGRES_USER: thesystem
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U thesystem -d thesystem_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5433/thesystem_test
+      SPRING_DATASOURCE_USERNAME: thesystem
+      DB_PASSWORD: test_password
+      JWT_SECRET: ciOnlyTestSecretKeyForJwtTokenGeneration1234567890
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

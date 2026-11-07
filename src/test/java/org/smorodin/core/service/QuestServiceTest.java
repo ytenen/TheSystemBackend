@@ -43,6 +43,12 @@ class QuestServiceTest {
     private PlayerQuestRepository playerQuestRepository;
 
     @Mock
+    private DailyQuestLockService dailyQuestLockService;
+
+    @Mock
+    private DailyQuestSettingsService dailyQuestSettingsService;
+
+    @Mock
     private RewardService rewardService;
 
     @Spy
@@ -81,6 +87,31 @@ class QuestServiceTest {
 
         lenient().when(hiddenDomain.getResetInterval())
                 .thenReturn(ResetInterval.DAILY);
+
+        lenient().when(dailyDomain.getId())
+                .thenReturn(DAILY_ID);
+
+        lenient().when(dailyDomain.getType())
+                .thenReturn(QuestType.DAILY);
+
+        lenient().when(dailyDomain.getOwnerId())
+                .thenReturn(null);
+
+        lenient().when(dailyDomain.getTitle())
+                .thenReturn("Daily Training");
+
+        lenient().when(dailyDomain.getDescription())
+                .thenReturn("Complete your daily training");
+
+        lenient().when(dailyDomain.getTargets())
+                .thenReturn(TARGETS);
+
+        lenient().when(dailyDomain.getExpReward())
+                .thenReturn(100);
+
+        lenient().when(
+                dailyQuestSettingsService.applyPendingIfDue(anyLong())
+        ).thenReturn(TARGETS);
 
         dailyProgress = createProgress(DAILY_ID);
         hiddenProgress = createProgress(HIDDEN_ID);
@@ -126,6 +157,157 @@ class QuestServiceTest {
         when(playerQuestRepository.save(any(PlayerQuestEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
+
+
+    @Test
+    void shouldNotRewardDailyAgainAfterTargetsChange() {
+        configureDailyAndHidden();
+
+        Map<String, Integer> newTargets = Map.of(
+                "pushups", 30,
+                "squats", 40,
+                "plank", 90
+        );
+
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setProgress(new HashMap<>());
+        dailyProgress.setLastResetDate(LocalDate.now(clock));
+
+        when(dailyQuestSettingsService.applyPendingIfDue(PLAYER_ID))
+                .thenReturn(newTargets);
+
+        dailyProgress.setProgress(new HashMap<>(Map.of(
+                "pushups", 30,
+                "squats", 40,
+                "plank", 89
+        )));
+
+        QuestService.QuestUpdateResult result =
+                questService.updateProgress(
+                        PLAYER_ID, "plank", 1
+                );
+
+        assertFalse(result.isMainCompleted());
+
+        assertEquals(
+                QuestStatus.COMPLETED,
+                result.getPlayerQuest().getStatus()
+        );
+
+        verify(rewardService, never())
+                .addExp(PLAYER_ID, 100);
+    }
+
+
+
+    @Test
+    void shouldNotRewardHiddenAgainAfterTargetsChange() {
+        configureDailyAndHidden();
+
+        Map<String, Integer> newTargets = Map.of(
+                "pushups", 30,
+                "squats", 40,
+                "plank", 90
+        );
+
+        when(dailyQuestSettingsService.applyPendingIfDue(PLAYER_ID))
+                .thenReturn(newTargets);
+
+        // Daily и Hidden уже завершены сегодня.
+        dailyProgress.setStatus(QuestStatus.COMPLETED);
+        dailyProgress.setLastResetDate(LocalDate.now(clock));
+
+        hiddenProgress.setStatus(QuestStatus.COMPLETED);
+        hiddenProgress.setLastResetDate(LocalDate.now(clock));
+
+        // Игрок достиг почти удвоенных новых целей.
+        dailyProgress.setProgress(new HashMap<>(Map.of(
+                "pushups", 60,
+                "squats", 80,
+                "plank", 179
+        )));
+
+        QuestService.QuestUpdateResult result =
+                questService.updateProgress(
+                        PLAYER_ID, "plank", 1
+                );
+
+        assertFalse(result.isMainCompleted());
+        assertFalse(result.isHiddenCompleted());
+
+        assertEquals(
+                QuestStatus.COMPLETED,
+                hiddenProgress.getStatus()
+        );
+
+        verify(rewardService, never())
+                .addExp(anyLong(), anyInt());
+    }
+
+
+    @Test
+    void shouldResetCompletedDailyQuestOnNextDay() {
+        Long playerId = 1L;
+        Long questId = 10L;
+
+        LocalDate yesterday = LocalDate.now(clock).minusDays(1);
+
+        QuestEntity dailyTemplate = mock(QuestEntity.class);
+
+        when(dailyTemplate.getId()).thenReturn(questId);
+        when(dailyTemplate.toDomain()).thenReturn(
+                new Quest.Builder()
+                        .id(questId)
+                        .type(QuestType.DAILY)
+                        .title("Daily training")
+                        .targets(Map.of("pushups", 20))
+                        .resetInterval(ResetInterval.DAILY)
+                        .build()
+        );
+
+        when(questRepository.findByType(QuestType.DAILY))
+                .thenReturn(List.of(dailyTemplate));
+
+        PlayerQuestEntity progress = new PlayerQuestEntity();
+        progress.setId(100L);
+        progress.setPlayerId(playerId);
+        progress.setQuestId(questId);
+        progress.setStatus(QuestStatus.COMPLETED);
+        progress.setProgress(new HashMap<>(
+                Map.of("pushups", 20)
+        ));
+        progress.setLastResetDate(yesterday);
+
+        when(playerQuestRepository.findByPlayerIdAndQuestId(
+                playerId, questId
+        )).thenReturn(Optional.of(progress));
+
+        when(playerQuestRepository.save(any(PlayerQuestEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(dailyQuestSettingsService.applyPendingIfDue(playerId))
+                .thenReturn(Map.of("pushups", 30));
+
+        QuestService.DailyQuestResult result =
+                questService.getDailyQuest(playerId);
+
+        assertEquals(
+                QuestStatus.ACTIVE,
+                result.getPlayerQuest().getStatus()
+        );
+
+        assertTrue(
+                result.getPlayerQuest().getProgress().isEmpty()
+        );
+
+        assertEquals(
+                Map.of("pushups", 30),
+                result.getQuest().getTargets()
+        );
+
+        verify(dailyQuestLockService).lockPlayer(playerId);
+    }
+
 
     @Test
     void shouldIncreaseDailyProgress() {
