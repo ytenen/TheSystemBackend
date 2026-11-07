@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -35,9 +36,13 @@ class PersonalQuestIntegrationTest {
     private String createToken() {
         String username = "integration_user_"
                 + USER_COUNTER.incrementAndGet();
+        String uniqueUsername =
+                username + "_" + UUID.randomUUID()
+                        .toString()
+                        .replace("-", "");
 
         AuthResponse response = authService.register(
-                username,
+                uniqueUsername,
                 "TestPassword123!"
         );
 
