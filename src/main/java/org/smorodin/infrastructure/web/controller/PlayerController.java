@@ -2,6 +2,7 @@ package org.smorodin.infrastructure.web.controller;
 
 import org.smorodin.core.model.Player;
 import org.smorodin.core.service.PlayerService;
+import org.smorodin.infrastructure.avatar.PlayerAvatarService;
 import org.smorodin.infrastructure.auth.CustomUserDetails;
 import org.smorodin.infrastructure.web.dto.AddExpRequestDto;
 import org.smorodin.infrastructure.web.dto.IncreaseStatRequestDto;
@@ -21,11 +22,14 @@ public class PlayerController {
     @Autowired
     PlayerService playerService;
 
+    @Autowired
+    PlayerAvatarService avatarService;
+
     @GetMapping("/{id}")
     public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id){
         try{
             Player player = playerService.getPlayer(id);
-            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player,id);
+            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player, id, avatarService.hasAvatar(id));
             return ResponseEntity.ok(playerResponseDto);
         }
         catch (RuntimeException e){
@@ -62,7 +66,7 @@ public class PlayerController {
         try {
             Long userId = getCurrentUserId();
             Player player = playerService.getPlayer(userId);
-            return ResponseEntity.ok(PlayerResponseDto.of(player, userId));
+            return ResponseEntity.ok(PlayerResponseDto.of(player, userId, avatarService.hasAvatar(userId)));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
