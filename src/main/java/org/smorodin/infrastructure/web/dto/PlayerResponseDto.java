@@ -15,14 +15,16 @@ public class PlayerResponseDto {
     private String rank;
     private Stats stats;
     private Long id;
+    private String avatarUrl;
 
-    public static PlayerResponseDto of(Player player, Long id){
+    public static PlayerResponseDto of(Player player, Long id, boolean hasAvatar){
         return new PlayerResponseDto(player.getName(),
                 player.getLevel(),
                 player.getExp(),
                 player.getExpToNextLevel(),
                 player.getRank().toString(),
                 player.getStats(),
-                id);
+                id,
+                hasAvatar ? "/api/player/" + id + "/avatar" : null);
     }
 }
