@@ -5,6 +5,9 @@ import org.smorodin.core.model.Quest;
 import org.smorodin.core.service.DailyQuestSettingsService;
 import org.smorodin.core.service.QuestService;
 import org.smorodin.infrastructure.auth.CustomUserDetails;
+import org.smorodin.infrastructure.i18n.ApiText;
+import org.smorodin.infrastructure.i18n.SystemQuestText;
+import java.util.Locale;
 import org.smorodin.infrastructure.persistence.quest.QuestRepository;
 import org.smorodin.infrastructure.web.dto.quest.ProgressRequestDto;
 import org.smorodin.infrastructure.web.dto.quest.ProgressResponseDto;
@@ -23,18 +26,25 @@ public class QuestController {
 
     private final QuestService questService;
     private final DailyQuestSettingsService dailyQuestSettingsService;
+    private final ApiText text;
+    private final SystemQuestText systemQuestText;
 
     public QuestController(
             QuestService questService,
-            DailyQuestSettingsService dailyQuestSettingsService
+            DailyQuestSettingsService dailyQuestSettingsService,
+            ApiText text,
+            SystemQuestText systemQuestText
     ) {
         this.questService = questService;
         this.dailyQuestSettingsService = dailyQuestSettingsService;
+        this.text = text;
+        this.systemQuestText = systemQuestText;
     }
 
     @GetMapping("/daily")
     public ResponseEntity<QuestResponseDto> getDailyQuest(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            Locale locale
     ) {
         QuestService.DailyQuestResult result =
                 questService.getDailyQuest(userDetails.getUserId());
@@ -44,8 +54,8 @@ public class QuestController {
 
         QuestResponseDto response = QuestResponseDto.builder()
                 .id(quest.getId())
-                .title(quest.getTitle())
-                .description(quest.getDescription())
+                .title(systemQuestText.title(quest, locale))
+                .description(systemQuestText.description(quest, locale))
                 .targets(quest.getTargets())
                 .progress(playerQuest.getProgress())
                 .expReward(quest.getExpReward())
@@ -58,7 +68,8 @@ public class QuestController {
     @PostMapping("/daily/progress")
     public ResponseEntity<ProgressResponseDto> updateDailyProgress(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ProgressRequestDto request
+            @RequestBody ProgressRequestDto request,
+            Locale locale
     ) {
         QuestService.QuestUpdateResult result =
                 questService.updateProgress(
@@ -72,11 +83,11 @@ public class QuestController {
         String message;
 
         if (result.isHiddenCompleted()) {
-            message = "Hidden quest completed!";
+            message = text.get("progress.hidden.completed", locale);
         } else if (result.isMainCompleted()) {
-            message = "Daily quest completed!";
+            message = text.get("progress.daily.completed", locale);
         } else {
-            message = "Quest progress updated";
+            message = text.get("progress.updated", locale);
         }
 
         ProgressResponseDto response = ProgressResponseDto.builder()

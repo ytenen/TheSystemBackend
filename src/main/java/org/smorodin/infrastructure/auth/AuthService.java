@@ -50,7 +50,7 @@ public class AuthService {
     public AuthResponse login(String username, String password) {
         Optional<UserEntity> user = userRepository.findByUserName(username);
         if (user.isEmpty()){
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Wrong password");
         }
         else{
             UserEntity userEntity = user.get();
