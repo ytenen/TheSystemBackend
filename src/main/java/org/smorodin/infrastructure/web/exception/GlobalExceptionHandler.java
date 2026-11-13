@@ -1,7 +1,5 @@
 package org.smorodin.infrastructure.web.exception;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.smorodin.infrastructure.i18n.ApiText;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +18,6 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
     private final ApiText text;
 
     public GlobalExceptionHandler(ApiText text) {
@@ -79,18 +75,18 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, text.get("error.request.invalid", locale));
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleUnexpected(Exception exception, Locale locale) {
-        if (exception instanceof org.springframework.web.ErrorResponse response) {
-            int status = response.getStatusCode().value();
-            String key = status == 404
-                    ? "error.request.notFound"
-                    : status >= 400 && status < 500
-                    ? "error.request.invalid" : "error.server.internal";
-            return error(status, text.get(key, locale));
-        }
-        log.error("Unhandled API exception", exception);
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, text.get("error.server.internal", locale));
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> handleMethodNotAllowed(
+            org.springframework.web.HttpRequestMethodNotSupportedException exception, Locale locale
+    ) {
+        return error(HttpStatus.METHOD_NOT_ALLOWED, text.get("error.request.failed", locale));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleMissingResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException exception, Locale locale
+    ) {
+        return error(HttpStatus.NOT_FOUND, text.get("error.request.notFound", locale));
     }
 
     private static ResponseEntity<Map<String, String>> error(
