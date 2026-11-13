@@ -9,20 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Locale;
 
 @Service
 public class PlayerAvatarService {
 
-    private static final long MAX_AVATAR_BYTES = 2L * 1024 * 1024;
-    private static final int MAX_IMAGE_DIMENSION = 2048;
+    private static final long MAX_AVATAR_BYTES = AvatarImageProcessor.MAX_UPLOAD_BYTES;
 
     private final PlayerAvatarRepository avatarRepository;
     private final PlayerRepository playerRepository;
@@ -42,7 +34,7 @@ public class PlayerAvatarService {
         }
         if (file.getSize() > MAX_AVATAR_BYTES) {
             throw new ResponseStatusException(
-                    HttpStatus.PAYLOAD_TOO_LARGE, "Avatar must not exceed 2 MB"
+                    HttpStatus.PAYLOAD_TOO_LARGE, "Avatar upload must not exceed 10 MB"
             );
         }
 
@@ -59,19 +51,19 @@ public class PlayerAvatarService {
         }
         if (bytes.length > MAX_AVATAR_BYTES) {
             throw new ResponseStatusException(
-                    HttpStatus.PAYLOAD_TOO_LARGE, "Avatar must not exceed 2 MB"
+                    HttpStatus.PAYLOAD_TOO_LARGE, "Avatar upload must not exceed 10 MB"
             );
         }
-        validateImage(bytes, contentType);
+        AvatarData processed = AvatarImageProcessor.process(bytes, contentType);
 
         if (!playerRepository.existsById(playerId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found");
         }
 
         PlayerAvatarEntity avatar = avatarRepository.findById(playerId)
-                .orElseGet(() -> new PlayerAvatarEntity(playerId, contentType, bytes));
-        avatar.setContentType(contentType);
-        avatar.setImageData(bytes);
+                .orElseGet(() -> new PlayerAvatarEntity(playerId, processed.contentType(), processed.bytes()));
+        avatar.setContentType(processed.contentType());
+        avatar.setImageData(processed.bytes());
         avatarRepository.save(avatar);
     }
 
@@ -92,50 +84,6 @@ public class PlayerAvatarService {
     @Transactional
     public void delete(Long playerId) {
         avatarRepository.deleteById(playerId);
-    }
-
-    private static void validateImage(byte[] bytes, String declaredType) {
-        try (ImageInputStream stream = ImageIO.createImageInputStream(
-                new ByteArrayInputStream(bytes)
-        )) {
-            if (stream == null) {
-                throw new IllegalArgumentException("Invalid avatar image");
-            }
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
-            if (!readers.hasNext()) {
-                throw new IllegalArgumentException("Invalid avatar image");
-            }
-
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(stream);
-                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
-                boolean matches = ("image/png".equals(declaredType) && "png".equals(format))
-                        || ("image/jpeg".equals(declaredType)
-                        && ("jpeg".equals(format) || "jpg".equals(format)));
-                if (!matches) {
-                    throw new IllegalArgumentException("Image content does not match its type");
-                }
-
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-                if (width < 1 || height < 1
-                        || width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-                    throw new IllegalArgumentException(
-                            "Avatar dimensions must not exceed 2048 x 2048"
-                    );
-                }
-
-                BufferedImage decoded = reader.read(0);
-                if (decoded == null) {
-                    throw new IllegalArgumentException("Invalid avatar image");
-                }
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException exception) {
-            throw new IllegalArgumentException("Invalid avatar image", exception);
-        }
     }
 
     public record AvatarData(byte[] bytes, String contentType) {
