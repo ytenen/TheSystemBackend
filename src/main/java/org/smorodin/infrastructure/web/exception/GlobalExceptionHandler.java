@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity
                 .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(Map.of("error", "Avatar must not exceed 2 MB"));
+                .body(Map.of("error", "Avatar upload must not exceed 10 MB"));
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)

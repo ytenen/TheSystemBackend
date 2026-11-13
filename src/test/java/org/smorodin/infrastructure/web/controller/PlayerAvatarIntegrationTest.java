@@ -17,6 +17,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -74,11 +75,11 @@ class PlayerAvatarIntegrationTest {
 
         byte[] saved = mockMvc.perform(get("/api/player/{id}/avatar", user.getUserId()))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("Content-Type", "image/jpeg"))
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andReturn().getResponse().getContentAsByteArray();
 
-        assertArrayEquals(png, saved);
+        assertEquals(2, ImageIO.read(new java.io.ByteArrayInputStream(saved)).getWidth());
 
         mockMvc.perform(get("/api/player")
                         .header("Authorization", bearer(user)))
@@ -108,7 +109,7 @@ class PlayerAvatarIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "image/jpeg"))
                 .andReturn().getResponse().getContentAsByteArray();
-        assertArrayEquals(jpeg, saved);
+        assertEquals(2, ImageIO.read(new java.io.ByteArrayInputStream(saved)).getWidth());
 
         mockMvc.perform(delete("/api/player/avatar")
                         .header("Authorization", bearer(user)))
@@ -167,7 +168,7 @@ class PlayerAvatarIntegrationTest {
     void shouldRejectTooLargeUploadAndDimensions() throws Exception {
         AuthResponse user = createUser();
         mockMvc.perform(multipart(HttpMethod.PUT, "/api/player/avatar")
-                        .file(file("big.png", "image/png", new byte[2 * 1024 * 1024 + 1]))
+                        .file(file("big.png", "image/png", new byte[10 * 1024 * 1024 + 1]))
                         .header("Authorization", bearer(user)))
                 .andExpect(status().isPayloadTooLarge());
 
@@ -178,7 +179,7 @@ class PlayerAvatarIntegrationTest {
         mockMvc.perform(multipart(HttpMethod.PUT, "/api/player/avatar")
                         .file(file("wide.png", "image/png", output.toByteArray()))
                         .header("Authorization", bearer(user)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -207,9 +208,84 @@ class PlayerAvatarIntegrationTest {
         byte[] saved = mockMvc.perform(get("/api/player/{id}/avatar", first.getUserId()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray();
-        assertArrayEquals(firstImage, saved);
+        assertEquals(2, ImageIO.read(new java.io.ByteArrayInputStream(saved)).getWidth());
 
         mockMvc.perform(get("/api/player/{id}/avatar", second.getUserId()))
                 .andExpect(status().isNotFound());
     }
+    @Test
+    void shouldResizeLargePhotoKeepingAspectRatio() throws Exception {
+        AuthResponse user = createUser();
+        BufferedImage original = new BufferedImage(4032, 3024, BufferedImage.TYPE_INT_RGB);
+        original.setRGB(0, 0, 0x3366CC);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        assertTrue(ImageIO.write(original, "jpeg", output));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/player/avatar")
+                        .file(file("large.jpg", "image/jpeg", output.toByteArray()))
+                        .header("Authorization", bearer(user)))
+                .andExpect(status().isOk());
+
+        byte[] stored = mockMvc.perform(get("/api/player/{id}/avatar", user.getUserId()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/jpeg"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        BufferedImage resized = ImageIO.read(new java.io.ByteArrayInputStream(stored));
+        assertEquals(512, resized.getWidth());
+        assertEquals(384, resized.getHeight());
+        assertTrue(stored.length < 2 * 1024 * 1024);
+    }
+
+    @Test
+    void shouldAcceptLargeUploadAndCompressIt() throws Exception {
+        AuthResponse user = createUser();
+        BufferedImage original = new BufferedImage(1024, 1024, BufferedImage.TYPE_INT_RGB);
+        java.util.Random random = new java.util.Random(1234);
+        for (int y = 0; y < 1024; y++) {
+            for (int x = 0; x < 1024; x++) {
+                original.setRGB(x, y, random.nextInt(0x1000000));
+            }
+        }
+        ByteArrayOutputStream source = new ByteArrayOutputStream();
+        assertTrue(ImageIO.write(original, "png", source));
+        assertTrue(source.size() > 2 * 1024 * 1024);
+        assertTrue(source.size() < 10 * 1024 * 1024);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/player/avatar")
+                        .file(file("large.png", "image/png", source.toByteArray()))
+                        .header("Authorization", bearer(user)))
+                .andExpect(status().isOk());
+
+        byte[] stored = mockMvc.perform(get("/api/player/{id}/avatar", user.getUserId()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/jpeg"))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertEquals(512, ImageIO.read(new java.io.ByteArrayInputStream(stored)).getWidth());
+        assertTrue(stored.length < source.size());
+    }
+
+    @Test
+    void shouldPreservePngTransparency() throws Exception {
+        AuthResponse user = createUser();
+        BufferedImage original = new BufferedImage(800, 400, BufferedImage.TYPE_INT_ARGB);
+        original.setRGB(400, 200, 0xFF3366CC);
+        ByteArrayOutputStream source = new ByteArrayOutputStream();
+        assertTrue(ImageIO.write(original, "png", source));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/player/avatar")
+                        .file(file("transparent.png", "image/png", source.toByteArray()))
+                        .header("Authorization", bearer(user)))
+                .andExpect(status().isOk());
+
+        byte[] stored = mockMvc.perform(get("/api/player/{id}/avatar", user.getUserId()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andReturn().getResponse().getContentAsByteArray();
+        BufferedImage resized = ImageIO.read(new java.io.ByteArrayInputStream(stored));
+        assertEquals(512, resized.getWidth());
+        assertEquals(256, resized.getHeight());
+        assertEquals(0, resized.getRGB(0, 0) >>> 24);
+    }
+
 }
