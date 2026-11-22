@@ -233,4 +233,42 @@ class StatExperienceIntegrationTest {
                 () -> playerService.addStatXp(id, StatType.STRENGTH, -1));
         assertEquals(0, playerService.getStatProgress(id).get(StatType.STRENGTH).currentXp());
     }
+
+    @Test
+    void concurrentDailyRequestsShouldGrantEachQuestOnce() throws Exception {
+        AuthResponse user = user();
+        Long id = user.getUserId();
+        settingsService.updateNow(id, settings(UpdateDailyQuestRequestDto.UpdateMode.NOW, 1));
+        questService.getDailyQuest(id);
+        long startingExp = playerService.getPlayer(id).getExp();
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            Callable<QuestService.QuestUpdateResult> task = () -> {
+                ready.countDown();
+                if (!start.await(10, TimeUnit.SECONDS)) {
+                    throw new TimeoutException("Start signal timed out");
+                }
+                return questService.updateProgress(id, "pushups", 1);
+            };
+            Future<QuestService.QuestUpdateResult> first = executor.submit(task);
+            Future<QuestService.QuestUpdateResult> second = executor.submit(task);
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            QuestService.QuestUpdateResult a = first.get(30, TimeUnit.SECONDS);
+            QuestService.QuestUpdateResult b = second.get(30, TimeUnit.SECONDS);
+            assertEquals(2, a.getRewardsGranted().size() + b.getRewardsGranted().size());
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
+
+        assertEquals(startingExp + 300, playerService.getPlayer(id).getExp());
+        assertEquals(50, playerService.getStatProgress(id).get(StatType.STRENGTH).currentXp());
+        assertEquals(25, playerService.getStatProgress(id).get(StatType.WILL).currentXp());
+        assertEquals(0, playerService.getStatProgress(id).get(StatType.AGILITY).currentXp());
+    }
 }
