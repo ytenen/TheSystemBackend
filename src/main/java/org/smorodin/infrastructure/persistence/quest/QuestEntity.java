@@ -46,11 +46,9 @@ public class QuestEntity {
     @Column(nullable = false)
     private int expReward;
 
-    @Column(name = "stat_reward")
-    private String statReward;
-
-    @Column(name = "stat_reward_amount")
-    private int statRewardAmount;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "stat_xp_rewards", nullable = false, columnDefinition = "json")
+    private Map<String, Integer> statXpRewards = new HashMap<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "reset_interval", nullable = false)
@@ -78,8 +76,7 @@ public class QuestEntity {
         entity.setDescription(quest.getDescription());
         entity.setTargets(new HashMap<>(quest.getTargets()));
         entity.setExpReward(quest.getExpReward());
-        entity.setStatReward(quest.getStatReward());
-        entity.setStatRewardAmount(quest.getStatRewardAmount());
+        entity.setStatXpRewards(new HashMap<>(quest.getStatXpRewards()));
         entity.setResetInterval(quest.getResetInterval());
         entity.setStartDate(quest.getStartDate());
         entity.setEndDate(quest.getEndDate());
@@ -98,8 +95,7 @@ public class QuestEntity {
                 .description(description)
                 .targets(new HashMap<>(targets))
                 .expReward(expReward)
-                .statReward(statReward)
-                .statRewardAmount(statRewardAmount)
+                .statXpRewards(statXpRewards)
                 .resetInterval(resetInterval)
                 .startDate(startDate)
                 .endDate(endDate)

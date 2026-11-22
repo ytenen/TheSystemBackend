@@ -29,7 +29,8 @@ public class PlayerController {
     public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id){
         try{
             Player player = playerService.getPlayer(id);
-            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player, id, avatarService.hasAvatar(id));
+            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player, id, avatarService.hasAvatar(id),
+                    playerService.getStatProgress(id));
             return ResponseEntity.ok(playerResponseDto);
         }
         catch (RuntimeException e){
@@ -66,7 +67,8 @@ public class PlayerController {
         try {
             Long userId = getCurrentUserId();
             Player player = playerService.getPlayer(userId);
-            return ResponseEntity.ok(PlayerResponseDto.of(player, userId, avatarService.hasAvatar(userId)));
+            return ResponseEntity.ok(PlayerResponseDto.of(player, userId, avatarService.hasAvatar(userId),
+                    playerService.getStatProgress(userId)));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

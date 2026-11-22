@@ -11,6 +11,7 @@ import java.util.Locale;
 import org.smorodin.infrastructure.persistence.quest.QuestRepository;
 import org.smorodin.infrastructure.web.dto.quest.ProgressRequestDto;
 import org.smorodin.infrastructure.web.dto.quest.ProgressResponseDto;
+import org.smorodin.infrastructure.web.dto.quest.GrantedRewardDto;
 import org.smorodin.infrastructure.web.dto.quest.QuestResponseDto;
 
 import org.smorodin.infrastructure.web.dto.quest.UpdateDailyQuestRequestDto;
@@ -59,6 +60,7 @@ public class QuestController {
                 .targets(quest.getTargets())
                 .progress(playerQuest.getProgress())
                 .expReward(quest.getExpReward())
+                .statXpRewards(quest.getStatXpRewards())
                 .completed(playerQuest.isCompleted())
                 .build();
 
@@ -95,6 +97,13 @@ public class QuestController {
                 .completed(playerQuest.isCompleted())
                 .hiddenCompleted(result.isHiddenCompleted())
                 .message(message)
+                .rewardsGranted(result.getRewardsGranted().stream()
+                        .map(reward -> new GrantedRewardDto(
+                                reward.questType(),
+                                reward.expReward(),
+                                reward.statXpRewards()
+                        ))
+                        .toList())
                 .build();
 
         return ResponseEntity.ok(response);
