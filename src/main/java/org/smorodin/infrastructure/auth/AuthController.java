@@ -19,12 +19,18 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Invalid authentication request");
+        }
         AuthResponse response = authService.register(request.getUsername(), request.getPassword());
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Invalid authentication request");
+        }
         AuthResponse response = authService.login(request.getUsername(), request.getPassword());
         return ResponseEntity.ok(response);
     }

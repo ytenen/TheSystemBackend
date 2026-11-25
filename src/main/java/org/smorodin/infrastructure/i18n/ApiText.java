@@ -10,6 +10,9 @@ import java.util.Map;
 public class ApiText {
     private static final Map<String, String> ERROR_KEYS = Map.ofEntries(
             Map.entry("Wrong password", "error.auth.invalidCredentials"),
+            Map.entry("Invalid registration username", "error.auth.usernameInvalid"),
+            Map.entry("Invalid registration password", "error.auth.passwordInvalid"),
+            Map.entry("Invalid authentication request", "error.auth.requestInvalid"),
             Map.entry("Invalid player ID", "error.player.invalidId"),
             Map.entry("Name must be longer than 5 symbols", "error.player.invalidName"),
             Map.entry("Username must be at least 3 characters", "error.player.invalidName"),

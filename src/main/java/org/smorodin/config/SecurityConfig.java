@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()  // регистрация и логин открыты
                         .requestMatchers(HttpMethod.GET, "/api/player/*/avatar").permitAll()
+                        // Defense in depth: the handlers are removed as well.
+                        .requestMatchers(HttpMethod.POST, "/api/player/exp", "/api/player/stat").denyAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
