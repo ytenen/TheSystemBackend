@@ -16,7 +16,7 @@
 
     <groupId>org.smorodin</groupId>
     <artifactId>system-backend</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
     <name>system-backend</name>
     <description>Серверная часть системы Solo Leveling</description>
 
