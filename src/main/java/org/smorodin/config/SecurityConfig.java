@@ -6,6 +6,9 @@ import org.smorodin.infrastructure.auth.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
+import jakarta.servlet.DispatcherType;
+import java.util.Arrays;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -34,6 +37,9 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint entryPoint;
 
+    @Value("${app.cors.allowed-origins}")
+    private String allowedCorsOrigins;
+
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
                           CustomUserDetailsService userDetailsService,
                           JwtAuthenticationEntryPoint entryPoint){
@@ -58,7 +64,8 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()  // регистрация и логин открыты
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/player/*/avatar").permitAll()
                         // Defense in depth: the handlers are removed as well.
                         .requestMatchers(HttpMethod.POST, "/api/player/exp", "/api/player/stat").denyAll()
@@ -77,9 +84,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of("http://localhost:5173")
-        );
+        // Explicit origin list; credentials are never combined with a wildcard.
+        List<String> origins = Arrays.stream(allowedCorsOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        if (origins.contains("*")) {
+            throw new IllegalStateException("CORS_ALLOWED_ORIGINS must list explicit origins");
+        }
+        configuration.setAllowedOrigins(origins);
 
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
