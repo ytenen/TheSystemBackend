@@ -175,7 +175,7 @@ class BackendSecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("null"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid authentication request"));
+                .andExpect(jsonPath("$.error").value("Invalid request"));
     }
 
     @Test
