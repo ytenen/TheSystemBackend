@@ -17,6 +17,7 @@ public class QuestResponseDto {
     private Map<String, Integer> progress;
 
     private int expReward;
+    private Map<String, Integer> statXpRewards;
 
     private boolean completed;
 }

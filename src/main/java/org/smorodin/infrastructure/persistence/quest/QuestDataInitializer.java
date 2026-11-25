@@ -48,8 +48,7 @@ public class QuestDataInitializer implements CommandLineRunner {
                         "plank", 60
                 ))
                 .expReward(100)
-                .statReward("STRENGTH")
-                .statRewardAmount(1)
+                .statXpRewards(Map.of("STRENGTH", 25))
                 .resetInterval(ResetInterval.DAILY)
                 .build();
     }
@@ -65,8 +64,7 @@ public class QuestDataInitializer implements CommandLineRunner {
                         "plank", 120
                 ))
                 .expReward(200)
-                .statReward("AGILITY")
-                .statRewardAmount(1)
+                .statXpRewards(Map.of("STRENGTH", 25, "WILL", 25))
                 .resetInterval(ResetInterval.DAILY)
                 .build();
     }

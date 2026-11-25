@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.Map;
+import java.util.List;
 
 @Getter
 @Builder
@@ -15,4 +16,5 @@ public class ProgressResponseDto {
     private boolean hiddenCompleted;
 
     private String message;
+    private List<GrantedRewardDto> rewardsGranted;
 }

@@ -20,8 +20,7 @@ public class Quest {
     private final String description;
     private final Map<String, Integer> targets;
     private final int expReward;
-    private final String statReward;
-    private final int statRewardAmount;
+    private final Map<String, Integer> statXpRewards;
     private final ResetInterval resetInterval;
     private final LocalDate startDate;
     private final LocalDate endDate;
@@ -38,8 +37,7 @@ public class Quest {
                 ? null
                 : Map.copyOf(builder.targets);
         this.expReward = builder.expReward;
-        this.statReward = builder.statReward;
-        this.statRewardAmount = builder.statRewardAmount;
+        this.statXpRewards = Map.copyOf(builder.statXpRewards);
         this.resetInterval = builder.resetInterval;
         this.startDate = builder.startDate;
         this.endDate = builder.endDate;
@@ -69,8 +67,18 @@ public class Quest {
             }
         }
 
-        if (expReward < 0 || statRewardAmount < 0) {
+        if (expReward < 0) {
             throw new IllegalArgumentException("Rewards cannot be negative");
+        }
+        for (Map.Entry<String, Integer> reward : statXpRewards.entrySet()) {
+            try {
+                org.smorodin.core.model.enums.StatType.valueOf(reward.getKey());
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Unknown stat XP reward type", ex);
+            }
+            if (reward.getValue() == null || reward.getValue() <= 0) {
+                throw new IllegalArgumentException("Stat XP reward must be positive");
+            }
         }
 
         if (resetInterval == null) {
@@ -111,8 +119,7 @@ public class Quest {
         private String description;
         private Map<String, Integer> targets;
         private int expReward;
-        private String statReward;
-        private int statRewardAmount;
+        private Map<String, Integer> statXpRewards = Map.of();
         private ResetInterval resetInterval = ResetInterval.DAILY;
         private LocalDate startDate;
         private LocalDate endDate;
@@ -154,13 +161,8 @@ public class Quest {
             return this;
         }
 
-        public Builder statReward(String value) {
-            statReward = value;
-            return this;
-        }
-
-        public Builder statRewardAmount(int value) {
-            statRewardAmount = value;
+        public Builder statXpRewards(Map<String, Integer> value) {
+            statXpRewards = value == null ? Map.of() : Map.copyOf(value);
             return this;
         }
 

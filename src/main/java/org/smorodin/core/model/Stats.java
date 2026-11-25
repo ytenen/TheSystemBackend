@@ -40,6 +40,17 @@ public class Stats {
     public int getPerception() { return perception; }
     public int getWill() { return will; }
 
+    public int valueOf(StatType type) {
+        return switch (java.util.Objects.requireNonNull(type, "Stat type is required")) {
+            case STRENGTH -> strength;
+            case AGILITY -> agility;
+            case VITALITY -> vitality;
+            case INTELLIGENCE -> intelligence;
+            case PERCEPTION -> perception;
+            case WILL -> will;
+        };
+    }
+
     public static class Builder {
         private int strength = 8;
         private int agility = 5;
