@@ -67,7 +67,7 @@ npm ci
 VITE_API_BASE_URL=https://api.example.com npm run build
 ```
 
-Replace the example with your actual API URL. Vite embeds the value into the output in `dist/`; changing it requires rebuilding. Production requires an explicit HTTPS URL (HTTP is allowed only for loopback hosts) or a root-relative base such as `/` for a same-origin reverse proxy. A prefix such as `/backend` requires a proxy that forwards `/backend/api/...` to backend `/api/...`; do not append `/api` to a normal API origin because client endpoints already contain `/api`. Credentials in URLs, queries, fragments and protocol-relative URLs are not supported. The dev-only fallback is disabled in production to avoid accidentally sending credentials to localhost. The application validates configuration on initialization; use an explicit URL at build time regardless of whether the build itself rejects missing configuration. All `VITE_` values are public in the browser bundle: never put JWT secrets, passwords or private keys there.
+Replace the example with your actual API URL. Vite embeds the value into the output in `dist/`; changing it requires rebuilding. Production requires an explicit HTTPS URL (HTTP is allowed only for loopback hosts) or a root-relative base such as `/` for a same-origin reverse proxy. A prefix such as `/backend` requires a proxy that forwards `/backend/api/...` to backend `/api/...`; do not append `/api` to a normal API origin because client endpoints already contain `/api`. Credentials in URLs, queries, fragments and protocol-relative URLs are not supported. The dev-only fallback is disabled in production to avoid accidentally sending credentials to localhost. The application validates configuration on initialization. Always supply the URL at build time; a generated bundle alone does not prove the configuration is valid. All `VITE_` values are public in the browser bundle: never put JWT secrets, passwords or private keys there.
 
 For local production-preview testing, build with `VITE_API_BASE_URL=http://localhost:8080 npm run build`, then run `npm run preview -- --host localhost --port 4173 --strictPort` and allow `http://localhost:4173` in Backend CORS. Preview is not a production hosting server.
 
@@ -128,11 +128,11 @@ Daily settings example: `{"targets":{"pushups":20,"squats":30,"plank":60},"mode"
 
 ## Git and release workflow
 
-Develop on feature branches from dev, open PRs into dev, review and require green CI. Release via dev → main PRs after owner approval; prefer merge commits to preserve history. Never force push or delete main. Frontend main must first be bootstrapped from a green commit containing the main-enabled CI workflow, before final release changes. Tag only verified main commits with v0.1.0 after explicit approval.
+Develop on feature branches from dev, open PRs into dev, review and require green CI. Release via dev → main PRs after owner approval; prefer merge commits to preserve history. Never force push or delete main. For the first Frontend main, use an agreed green ancestor containing the main-enabled CI workflow (the merge of PR #6 is the proposed baseline), not the final release HEAD, so the initial release PR is non-empty. Tag only verified main commits with v0.1.0 after explicit approval.
 
 ## Known limitations
 
-Local development is the documented deployment target, not a hardened production deployment. Personal Quests REST API is available, but a full frontend management UI is not included. Quest Engine 2.0, story chains and AI-generated quests are future work. No separate native mobile app is included. Progress is user-reported; server-side reward logic does not verify real-world activity. Public avatars and authenticated player-by-ID reads are intentional API behavior in the current implementation. End-to-end smoke tests and production deployment configuration must be checked on the final release candidate.
+Local development is the documented deployment target, not a hardened production deployment. Personal Quests REST API is available, but a full frontend management UI is not included. Quest Engine 2.0, story chains and AI-generated quests are future work. No separate native mobile app is included. Progress is user-reported; server-side reward logic does not verify real-world activity. Avatars are publicly readable and authenticated player-by-ID reads are not restricted to the current player in the current implementation. End-to-end smoke tests and production deployment configuration must be checked on the final release candidate.
 
 ## Repositories
 
