@@ -2,56 +2,44 @@ package org.smorodin.infrastructure.web.controller;
 
 import org.smorodin.core.model.Player;
 import org.smorodin.core.service.PlayerService;
-import org.smorodin.infrastructure.web.dto.AddExpRequestDto;
-import org.smorodin.infrastructure.web.dto.IncreaseStatRequestDto;
+import org.smorodin.infrastructure.auth.CustomUserDetails;
+import org.smorodin.infrastructure.avatar.PlayerAvatarService;
 import org.smorodin.infrastructure.web.dto.PlayerResponseDto;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/player")
+@RequestMapping("/api/player")
 public class PlayerController {
 
-    @Autowired
-    PlayerService playerService;
+    private final PlayerService playerService;
+    private final PlayerAvatarService avatarService;
+
+    public PlayerController(PlayerService playerService, PlayerAvatarService avatarService) {
+        this.playerService = playerService;
+        this.avatarService = avatarService;
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id){
-        try{
-            Player player = playerService.getPlayer(id);
-            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player,id);
-            return ResponseEntity.ok(playerResponseDto);
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id) {
+        return ResponseEntity.ok(profile(id));
     }
 
-    @PostMapping("/exp/{id}")
-    public ResponseEntity<PlayerResponseDto> addExp(@PathVariable Long id, @RequestBody AddExpRequestDto request){
-        try{
-            Player player = playerService.addExp(id, request.getAmount());
-            return ResponseEntity.ok(PlayerResponseDto.of(player,id));
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    @GetMapping
+    public ResponseEntity<PlayerResponseDto> getCurrentPlayer(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(profile(userDetails.getUserId()));
     }
 
-    @PostMapping("/stat/{id}")
-    public ResponseEntity<PlayerResponseDto> increaseStat(@PathVariable Long id,
-                                                          @RequestBody IncreaseStatRequestDto request){
-        try{
-            Player player = playerService.increaseStat(id, request.getStatName(), request.getAmount());
-            return ResponseEntity.ok(PlayerResponseDto.of(player,id));
-        }
-        catch (IllegalArgumentException e){
-            return ResponseEntity.badRequest().build();
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
+    private PlayerResponseDto profile(Long id) {
+        Player player = playerService.getPlayer(id);
+        return PlayerResponseDto.of(
+                player, id, avatarService.hasAvatar(id), playerService.getStatProgress(id)
+        );
     }
-    
 }

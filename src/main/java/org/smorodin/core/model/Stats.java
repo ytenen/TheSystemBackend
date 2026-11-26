@@ -1,6 +1,7 @@
 package org.smorodin.core.model;
 
 import org.smorodin.config.PlayerConfig;
+import org.smorodin.core.model.enums.StatType;
 
 import java.util.Objects;
 
@@ -38,6 +39,17 @@ public class Stats {
     public int getIntelligence() { return intelligence; }
     public int getPerception() { return perception; }
     public int getWill() { return will; }
+
+    public int valueOf(StatType type) {
+        return switch (java.util.Objects.requireNonNull(type, "Stat type is required")) {
+            case STRENGTH -> strength;
+            case AGILITY -> agility;
+            case VITALITY -> vitality;
+            case INTELLIGENCE -> intelligence;
+            case PERCEPTION -> perception;
+            case WILL -> will;
+        };
+    }
 
     public static class Builder {
         private int strength = 8;
