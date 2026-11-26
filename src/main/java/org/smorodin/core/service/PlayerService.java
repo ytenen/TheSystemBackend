@@ -16,6 +16,8 @@ import org.smorodin.infrastructure.persistence.PlayerEntity;
 import org.smorodin.infrastructure.persistence.PlayerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @Service
@@ -28,7 +30,8 @@ public class PlayerService implements RewardService{
     private PlayerStatProgressRepository statProgressRepository;
 
     public Player getPlayer(Long id){
-        PlayerEntity player = playerRepository.findById(id).orElseThrow(() -> new RuntimeException("Player with id: " + id + " not found"));
+        PlayerEntity player = playerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found"));
         return player.toDomain();
     }
 

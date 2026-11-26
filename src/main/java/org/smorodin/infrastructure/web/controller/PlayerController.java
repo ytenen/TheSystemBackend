@@ -2,88 +2,44 @@ package org.smorodin.infrastructure.web.controller;
 
 import org.smorodin.core.model.Player;
 import org.smorodin.core.service.PlayerService;
-import org.smorodin.infrastructure.avatar.PlayerAvatarService;
 import org.smorodin.infrastructure.auth.CustomUserDetails;
-import org.smorodin.infrastructure.web.dto.AddExpRequestDto;
-import org.smorodin.infrastructure.web.dto.IncreaseStatRequestDto;
+import org.smorodin.infrastructure.avatar.PlayerAvatarService;
 import org.smorodin.infrastructure.web.dto.PlayerResponseDto;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/player")
+@RequestMapping("/api/player")
 public class PlayerController {
 
-    @Autowired
-    PlayerService playerService;
+    private final PlayerService playerService;
+    private final PlayerAvatarService avatarService;
 
-    @Autowired
-    PlayerAvatarService avatarService;
+    public PlayerController(PlayerService playerService, PlayerAvatarService avatarService) {
+        this.playerService = playerService;
+        this.avatarService = avatarService;
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id){
-        try{
-            Player player = playerService.getPlayer(id);
-            PlayerResponseDto playerResponseDto = PlayerResponseDto.of(player, id, avatarService.hasAvatar(id),
-                    playerService.getStatProgress(id));
-            return ResponseEntity.ok(playerResponseDto);
-        }
-        catch (RuntimeException e){
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PostMapping("/exp")
-    public ResponseEntity<?> addExp(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam int amount) {
-
-        Player player = playerService.addExp(userDetails.getUserId(), amount);
-        return ResponseEntity.ok(player);
-    }
-
-    @PostMapping("/stat")
-    public ResponseEntity<?> increaseStat(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam String stat,
-            @RequestParam int amount) {
-
-        Player player = playerService.increaseStat(
-                userDetails.getUserId(),
-                stat,
-                amount
-        );
-
-        return ResponseEntity.ok(player);
+    public ResponseEntity<PlayerResponseDto> getPlayer(@PathVariable Long id) {
+        return ResponseEntity.ok(profile(id));
     }
 
     @GetMapping
-    public ResponseEntity<PlayerResponseDto> getCurrentPlayer() {
-        try {
-            Long userId = getCurrentUserId();
-            Player player = playerService.getPlayer(userId);
-            return ResponseEntity.ok(PlayerResponseDto.of(player, userId, avatarService.hasAvatar(userId),
-                    playerService.getStatProgress(userId)));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    public ResponseEntity<PlayerResponseDto> getCurrentPlayer(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(profile(userDetails.getUserId()));
     }
 
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
-        }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof CustomUserDetails) {
-            return ((CustomUserDetails) principal).getUserId();
-        }
-        throw new RuntimeException("Invalid authentication");
+    private PlayerResponseDto profile(Long id) {
+        Player player = playerService.getPlayer(id);
+        return PlayerResponseDto.of(
+                player, id, avatarService.hasAvatar(id), playerService.getStatProgress(id)
+        );
     }
-    
 }
