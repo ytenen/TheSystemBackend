@@ -28,6 +28,8 @@ git clone --branch dev https://github.com/ytenen/TheSystemFrontend.git
 
 ### Terminal 1 — database and backend
 
+The following credential-generation commands are only for a fresh database. For an existing database, restore the original password and JWT secret instead of generating new ones.
+
 ```sh
 cd TheSystemBackend
 export POSTGRES_PASSWORD="$(openssl rand -hex 32)"
@@ -160,6 +162,10 @@ Develop on feature branches from dev, open PRs into dev, review and require gree
 ## Known limitations
 
 This is a local-only MVP, not a public production release. Cloud hosting, public HTTPS deployment, reverse proxy infrastructure and operational hardening are outside v0.1.0. Personal Quests REST API is available, but a full frontend management UI is not included. Quest Engine 2.0, story chains and AI-generated quests are future work. No separate native mobile app is included. Progress is user-reported; server-side reward logic does not verify real-world activity. Avatars are publicly readable and authenticated player-by-ID reads are not restricted to the current player in the current implementation. End-to-end local smoke tests must be checked on the final release candidate; public production deployment is not a release requirement.
+
+## Release notes
+
+[TheSystem v0.1.0 — First Stable Local MVP Release](RELEASE_NOTES.md)
 
 ## Repositories
 
